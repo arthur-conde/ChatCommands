@@ -2,3 +2,4 @@
 .sarif/
 bin/
 obj/
+obj/*
