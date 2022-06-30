@@ -59,7 +59,11 @@ namespace ChatCommands.Commands
 
         private static void LoadPermissions()
         {
-            if (!File.Exists("BepInEx/config/ChatCommands/permissions.json")) File.Create("BepInEx/config/ChatCommands/permissions.json");
+            if (!File.Exists("BepInEx/config/ChatCommands/permissions.json"))
+            {
+                using var stream = File.Create("BepInEx/config/ChatCommands/permissions.json");
+            }
+
             string json = File.ReadAllText("BepInEx/config/ChatCommands/permissions.json");
             try
             {

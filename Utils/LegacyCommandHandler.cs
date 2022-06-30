@@ -12,13 +12,13 @@ using Wetstone.Hooks;
 
 namespace ChatCommands.Utils
 {
-    public class CommandHandler
+    public class LegacyCommandHandler
     {
         public string Prefix { get; set; }
         public string DisabledCommands { get; set; }
         public Dictionary<string, bool> Permissions { get; set; }
 
-        public CommandHandler(string prefix, string disabledCommands)
+        public LegacyCommandHandler(string prefix, string disabledCommands)
         {
             this.Prefix = prefix;
             this.DisabledCommands = disabledCommands;
@@ -76,7 +76,11 @@ namespace ChatCommands.Utils
 
         private void LoadPermissions()
         {
-            if (!File.Exists("BepInEx/config/ChatCommands/permissions.json")) File.Create("BepInEx/config/ChatCommands/permissions.json");
+            if (!File.Exists("BepInEx/config/ChatCommands/permissions.json"))
+            {
+                using var stream = File.Create("BepInEx/config/ChatCommands/permissions.json");
+            }
+
             string json = File.ReadAllText("BepInEx/config/ChatCommands/permissions.json");
             try
             {
