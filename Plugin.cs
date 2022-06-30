@@ -79,6 +79,7 @@ namespace ChatCommands
             serviceCollection.RegisterInstance<ICommandHandlerOptions>(commandHandlerOptions);
             serviceCollection.Register<IChatCommandCache,ChatCommandCache>();
             serviceCollection.Register<ICommandHandler, CommandHandler>();
+            serviceCollection.Register<IExpressionCache<ProjectM.UnitStats>, ExpressionCache<ProjectM.UnitStats>>(Lifestyle.Singleton);
 
             foreach (var chatCommand in Assembly.GetExecutingAssembly().GetTypes()
                          .Where(t => t.GetCustomAttribute(typeof(ChatCommandAttribute), false) is { }))

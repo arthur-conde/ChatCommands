@@ -3,12 +3,12 @@ using BepInEx.Logging;
 using ChatCommands.Abstractions;
 using ChatCommands.Models;
 using Il2CppSystem.Text.RegularExpressions;
-using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using ChatCommands.Utils;
 using Wetstone.API;
 using Wetstone.Hooks;
 
@@ -25,16 +25,11 @@ namespace ChatCommands.Services
 
         public Dictionary<string, bool> Permissions { get; set; }
 
-        private const string CommandSplitter = "(?<=\")[^\"]*(?=\")|[^\" ]+"; // Regex: (?<=")[^"]*(?=")|[^" ]+
-        private readonly Regex _commandSplitterRegex;
-
         public CommandHandler(ICommandHandlerOptions options, IChatCommandCache chatCommandCache, IEnumerable<IChatCommand> chatCommands)
         {
             Options = options;
             ChatCommandCache = chatCommandCache;
             ChatCommands = chatCommands.ToList();
-
-            _commandSplitterRegex = new Regex(CommandSplitter);
 
             LoadPermissions();
         }
@@ -44,16 +39,19 @@ namespace ChatCommands.Services
             if (!ev.Message.StartsWith(Prefix) || !VWorld.IsServer) return false;
 
             var message = ev.Message;
-            if (_commandSplitterRegex.Match(message, 1) is not { Success: true } match)
+            var parts = message.ParseArguments(' ', '"', '\'').ToArray();
+            if (parts.Length <= 0)
             {
                 log.LogInfo($"Failed to match regex to input: `{message}`");
                 return false;
             }
 
-            var command = match.Groups[0].Value;
-            IReadOnlyCollection<string> args = Array.Empty<string>();
-            if (match.Groups.Count > 1 && match.Groups is IEnumerable<Group> groups)
-                args = groups.Skip(1).Select(g => g.Value).ToArray();
+            var command = parts.First().Substring(1);
+            IReadOnlyList<string> args = Array.Empty<string>();
+            if (parts.Length > 1)
+                args = parts.Skip(1).ToList();
+
+            log.LogInfo($"Attempting to call command {command} with arguments [{string.Join(", ", args)}]");
 
             var commandContext = new CommandContext(Prefix, ev, log, config, args, DisabledCommands);
 
@@ -70,7 +68,18 @@ namespace ChatCommands.Services
                     ev.User.SendSystemMessage($"You do not have the required permissions to use that.");
                     return true;
                 }
-                if (!handler.Handle(commandContext)) continue;
+
+                switch (handler.Handle(commandContext))
+                {
+                    case CommandResult.MissingArguments:
+                        ev.User.SendMessage($"Missing command parameters. Check {Options.Prefix}help for more information..");
+                        break;
+                    case CommandResult.InvalidArguments:
+                        ev.User.SendMessage($"Invalid command parameters. Check {Options.Prefix}help for more information..");
+                        break;
+                    case CommandResult.Unhandled:
+                        continue;
+                }
 
                 log.LogInfo($"[CommandHandler] {ev.User.CharacterName} used command: {command.ToLower()}");
                 return true;

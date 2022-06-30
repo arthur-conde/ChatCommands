@@ -10,6 +10,6 @@ namespace ChatCommands.Abstractions
         /// </summary>
         /// <param name="ctx"></param>
         /// <returns></returns>
-        bool Handle(CommandContext ctx);
+        CommandResult Handle(CommandContext ctx);
     }
 }
