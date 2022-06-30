@@ -32,7 +32,7 @@
 			<PrivateAssets>all</PrivateAssets>
 			<!--<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>-->
 		</PackageReference>
-		<PackageReference Include="SimpleInjector" Version="5.3.3" />
+		<PackageReference Include="SimpleInjector" Version="5.3.3"/>
 		<PackageReference Include="System.Text.Json" Version="6.0.4" />
 		<PackageReference Include="Wetstone" Version="1.1.0" />
 	</ItemGroup>
