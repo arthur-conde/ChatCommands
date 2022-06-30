@@ -8,12 +8,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using ChatCommands.Attributes;
 using ChatCommands.Utils;
 using Wetstone.API;
 using Wetstone.Hooks;
 
 namespace ChatCommands.Services
 {
+    [AutoInject(typeof(ICommandHandler))]
     public class CommandHandler : ICommandHandler
     {
         private ICommandHandlerOptions Options { get; }

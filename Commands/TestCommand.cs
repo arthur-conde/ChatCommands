@@ -119,19 +119,22 @@ namespace ChatCommands.Commands
                                     {
                                         var me = UnitStatsCache.Get2<ModifiableBool>(memberInfo.Name);
                                         var mutable = me.GetValue(component);
-                                        ctx.EventUser.SendMessage($"The value of \"{memberInfo.Name}\" is {mutable.Value}");
+                                        ctx.EventUser.SendMessage(
+                                            $"The value of \"{memberInfo.Name}\" is {mutable.Value}");
                                     }
                                     else if (memberInfo.FieldType == typeof(ModifiableInt))
                                     {
                                         var me = UnitStatsCache.Get2<ModifiableInt>(memberInfo.Name);
                                         var mutable = me.GetValue(component);
-                                        ctx.EventUser.SendMessage($"The value of \"{memberInfo.Name}\" is {mutable.Value}");
+                                        ctx.EventUser.SendMessage(
+                                            $"The value of \"{memberInfo.Name}\" is {mutable.Value}");
                                     }
                                     else if (memberInfo.FieldType == typeof(ModifiableFloat))
                                     {
                                         var me = UnitStatsCache.Get2<ModifiableFloat>(memberInfo.Name);
                                         var mutable = me.GetValue(component);
-                                        ctx.EventUser.SendMessage($"The value of \"{memberInfo.Name}\" is {mutable.Value}");
+                                        ctx.EventUser.SendMessage(
+                                            $"The value of \"{memberInfo.Name}\" is {mutable.Value}");
                                     }
                                 }
                                 else
@@ -165,6 +168,7 @@ namespace ChatCommands.Commands
                 return CommandResult.MissingArguments;
             }
 
+            var message = string.Empty;
             switch (category)
             {
                 case "unit":
@@ -194,6 +198,7 @@ namespace ChatCommands.Commands
 
                                 component.PhysicalCriticalStrikeChance =
                                     ModifiableFloat.Create(ctx.CharacterEntity, ctx.EntityManager, value);
+                                message = $"The value of \"{property}\" has been set to {value}";
                                 break;
                             }
 
@@ -210,6 +215,7 @@ namespace ChatCommands.Commands
 
                                 component.PassiveHealthRegen =
                                     ModifiableFloat.Create(ctx.CharacterEntity, ctx.EntityManager, value);
+                                message = $"The value of \"{property}\" has been set to {value}";
                                 break;
                             }
 
@@ -230,6 +236,7 @@ namespace ChatCommands.Commands
 
                                 component.ResourcePower =
                                     ModifiableFloat.Create(ctx.CharacterEntity, ctx.EntityManager, value);
+                                message = $"The value of \"{property}\" has been set to {value}";
                                 break;
                             }
 
@@ -248,6 +255,7 @@ namespace ChatCommands.Commands
 
                                 component.ResourceYieldModifier =
                                     ModifiableFloat.Create(ctx.CharacterEntity, ctx.EntityManager, value);
+                                message = $"The value of \"{property}\" has been set to {value}";
                                 break;
                             }
 
@@ -262,6 +270,7 @@ namespace ChatCommands.Commands
                                             var me = UnitStatsCache.Get2<ModifiableBool>(memberInfo.Name);
                                             me.SetValue(component,
                                                 ModifiableBool.Create(ctx.CharacterEntity, ctx.EntityManager, value));
+                                            message = $"The value of \"{property}\" has been set to {value}";
                                         }
                                         else
                                         {
@@ -277,6 +286,7 @@ namespace ChatCommands.Commands
                                             var me = UnitStatsCache.Get2<ModifiableInt>(memberInfo.Name);
                                             me.SetValue(component,
                                                 ModifiableInt.Create(ctx.CharacterEntity, ctx.EntityManager, value));
+                                            message = $"The value of \"{property}\" has been set to {value}";
                                         }
                                         else
                                         {
@@ -292,6 +302,7 @@ namespace ChatCommands.Commands
                                             var me = UnitStatsCache.Get2<ModifiableFloat>(memberInfo.Name);
                                             me.SetValue(component,
                                                 ModifiableFloat.Create(ctx.CharacterEntity, ctx.EntityManager, value));
+                                            message = $"The value of \"{property}\" has been set to {value}";
                                         }
                                         else
                                         {
@@ -320,10 +331,8 @@ namespace ChatCommands.Commands
                     return CommandResult.InvalidArguments;
             }
 
-            ctx.EventUser.SendMessage("OK");
+            ctx.EventUser.SendMessage(message);
             return CommandResult.Success;
         }
-
-
     }
 }

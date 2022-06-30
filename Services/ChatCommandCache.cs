@@ -7,6 +7,7 @@ using System.Reflection;
 
 namespace ChatCommands.Services
 {
+    [AutoInject(typeof(IChatCommandCache))]
     public class ChatCommandCache : IChatCommandCache
     {
         private readonly Lazy<IReadOnlyDictionary<Type, ChatCommandAttribute>> _cache;

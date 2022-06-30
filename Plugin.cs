@@ -21,6 +21,8 @@ namespace ChatCommands
     [Reloadable]
     public class Plugin : BasePlugin
     {
+        internal const string KitsConfigPath = "BepInEx/config/ChatCommands/kits.json";
+        internal const string ConfigPath = "BepInEx/config/ChatCommands";
         private Harmony harmony;
 
         private LegacyCommandHandler cmd;
@@ -38,17 +40,16 @@ namespace ChatCommands
 
             try
             {
-                if (!File.Exists("BepInEx/config/ChatCommands/kits.json"))
+                if (!Directory.Exists(ConfigPath))
+                    Directory.CreateDirectory(ConfigPath);
+
+                if (!File.Exists(KitsConfigPath))
                 {
-                    if (!Directory.Exists("BepInEx/config/ChatCommands"))
-                        Directory.CreateDirectory("BepInEx/config/ChatCommands");
-                    using var stream = File.Create("BepInEx/config/ChatCommands/kits.json");
+                    using var stream = File.Create(KitsConfigPath);
                 }
 
                 if (!File.Exists("BepInEx/config/ChatCommands/permissions.json"))
                 {
-                    if (!Directory.Exists("BepInEx/config/ChatCommands"))
-                        Directory.CreateDirectory("BepInEx/config/ChatCommands");
                     using var stream = File.Create("BepInEx/config/ChatCommands/permissions.json");
                 }
             }
@@ -61,24 +62,30 @@ namespace ChatCommands
 
         public override void Load()
         {
-            InitConfig();
-            var commandHandlerOptions = new CommandHandlerOptions
-            {
-                Prefix= Prefix.Value, 
-                DisabledCommands = DisabledCommands.Value,
-            };
-            cmd = new LegacyCommandHandler(Prefix.Value, DisabledCommands.Value);
-            Chat.OnChatMessage += HandleChatMessage;
-            harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
-
-            Log.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
-
             var serviceCollection = new Container();
+
+            // Handle AutoInject Attribute
+            foreach (var serviceGroup in Assembly.GetExecutingAssembly().GetTypes()
+                         .Select(t => new { Type = t, Metadata = t.GetCustomAttribute<AutoInjectAttribute>(false) })
+                         .Where(e => e.Metadata != null)
+                         .GroupBy(e => e.Metadata.ServiceType)
+                         .Select(e => new { Type = e.Key, ConcreteImplementations = e.Select(e => e.Type).ToList()}))
+            {
+                Log.LogInfo($"Service: {serviceGroup.Type.Name}");
+                if (serviceGroup.ConcreteImplementations.Count == 1)
+                {
+                    var concreteType = serviceGroup.ConcreteImplementations.First();
+                    Log.LogInfo($"\tImplementation: {concreteType.Name}");
+                    serviceCollection.Register(serviceGroup.Type, concreteType);
+                }
+                else
+                {
+                    foreach(var concreteType in serviceGroup.ConcreteImplementations)
+                        serviceCollection.Collection.Append(serviceGroup.Type, concreteType);
+                }
+            }
+
             serviceCollection.RegisterInstance(Log);
-            serviceCollection.RegisterInstance(cmd);
-            serviceCollection.RegisterInstance<ICommandHandlerOptions>(commandHandlerOptions);
-            serviceCollection.Register<IChatCommandCache,ChatCommandCache>();
-            serviceCollection.Register<ICommandHandler, CommandHandler>();
             serviceCollection.Register<IExpressionCache<ProjectM.UnitStats>, ExpressionCache<ProjectM.UnitStats>>(Lifestyle.Singleton);
 
             foreach (var chatCommand in Assembly.GetExecutingAssembly().GetTypes()
@@ -88,18 +95,31 @@ namespace ChatCommands
                 serviceCollection.Collection.Append(typeof(IChatCommand), chatCommand);
             }
 
+            var commandHandlerOptions = new CommandHandlerOptions
+            {
+                Prefix= Prefix.Value, 
+                DisabledCommands = DisabledCommands.Value,
+            };
+            serviceCollection.RegisterInstance<ICommandHandlerOptions>(commandHandlerOptions);
+
+            cmd = new LegacyCommandHandler(Prefix.Value, DisabledCommands.Value);
+            serviceCollection.RegisterInstance(cmd);
+
             Log.LogInfo("Building container...");
-            // services = serviceCollection.BuildServiceProvider();
             container = serviceCollection;
             Log.LogInfo("Built container.");
 
-            Log.LogInfo("Testing container...");
+            Log.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
 
-            var commandHandler = container.GetInstance<ICommandHandler>();
-            if (commandHandler == null)
-                Log.LogInfo("Failed to retrieve ICommandHandler from DI container");
-            else
-                Log.LogInfo("Successfully retrieved ICommandHandler from DI container");
+            // Create config directory and json
+            var jsonConfigService = serviceCollection.GetInstance<IJsonConfigService>();
+            jsonConfigService.Initialize();
+
+            // Do magic
+            harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
+
+            // Hook events
+            Chat.OnChatMessage += HandleChatMessage;
         }
 
         public override bool Unload()
