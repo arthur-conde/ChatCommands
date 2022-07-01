@@ -18,6 +18,7 @@ namespace ChatCommands.Services
     [AutoInject(typeof(ICommandHandler))]
     public class CommandHandler : ICommandHandler
     {
+        private ManualLogSource Logger { get; }
         private ICommandHandlerOptions Options { get; }
         private IChatCommandCache ChatCommandCache { get; }
         private IReadOnlyList<IChatCommand> ChatCommands { get; }
@@ -27,8 +28,9 @@ namespace ChatCommands.Services
 
         public Dictionary<string, bool> Permissions { get; set; }
 
-        public CommandHandler(ICommandHandlerOptions options, IChatCommandCache chatCommandCache, IEnumerable<IChatCommand> chatCommands)
+        public CommandHandler(ManualLogSource logger, ICommandHandlerOptions options, IChatCommandCache chatCommandCache, IEnumerable<IChatCommand> chatCommands)
         {
+            Logger = logger;
             Options = options;
             ChatCommandCache = chatCommandCache;
             ChatCommands = chatCommands.ToList();
@@ -36,7 +38,7 @@ namespace ChatCommands.Services
             LoadPermissions();
         }
 
-        public bool HandleCommands(VChatEvent ev, ManualLogSource log, ConfigFile config)
+        public bool HandleCommands(VChatEvent ev, ConfigFile config)
         {
             if (!ev.Message.StartsWith(Prefix) || !VWorld.IsServer) return false;
 
@@ -44,7 +46,7 @@ namespace ChatCommands.Services
             var parts = message.ParseArguments(' ', '"', '\'').ToArray();
             if (parts.Length <= 0)
             {
-                log.LogInfo($"Failed to match regex to input: `{message}`");
+                Logger.LogInfo($"Failed to match regex to input: `{message}`");
                 return false;
             }
 
@@ -53,9 +55,9 @@ namespace ChatCommands.Services
             if (parts.Length > 1)
                 args = parts.Skip(1).ToList();
 
-            log.LogInfo($"Attempting to call command {command} with arguments [{string.Join(", ", args)}]");
+            Logger.LogInfo($"Attempting to call command {command} with arguments [{string.Join(", ", args)}]");
 
-            var commandContext = new CommandContext(Prefix, ev, log, config, args, DisabledCommands);
+            var commandContext = new CommandContext(Prefix, ev, config, args, DisabledCommands);
 
             foreach (var handler in ChatCommands)
             {
@@ -83,7 +85,7 @@ namespace ChatCommands.Services
                         continue;
                 }
 
-                log.LogInfo($"[CommandHandler] {ev.User.CharacterName} used command: {command.ToLower()}");
+                Logger.LogInfo($"[CommandHandler] {ev.User.CharacterName} used command: {command.ToLower()}");
                 return true;
             }
 

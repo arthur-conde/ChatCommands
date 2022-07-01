@@ -11,18 +11,17 @@ using Wetstone.API;
 namespace ChatCommands.Commands
 {
     [ChatCommand("debug", Usage = "debug prop <value|reset>", Description = "Fiddles with things")]
-    public class TestCommand : IChatCommand
+    public class TestCommand : BaseChatCommand
     {
-        private ManualLogSource Logger { get; }
         private IExpressionCache<UnitStats> UnitStatsCache { get; }
 
         public TestCommand(ManualLogSource logger, IExpressionCache<UnitStats> unitStatsCache)
+        : base(logger)
         {
-            Logger = logger;
             UnitStatsCache = unitStatsCache;
         }
 
-        public CommandResult Handle(CommandContext ctx)
+        public override CommandResult Handle(CommandContext ctx)
         {
             if (!ctx.Args.TryDequeue(out var subcommand))
             {

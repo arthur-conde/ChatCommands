@@ -6,7 +6,7 @@ namespace ChatCommands.Abstractions
 {
     public interface ICommandHandlerOptions
     {
-        string Prefix { get; set; }
-        string DisabledCommands { get; set; }
+        string Prefix { get; }
+        string DisabledCommands { get; }
     }
 }

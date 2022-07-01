@@ -1,15 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.IO;
-using BepInEx.Logging;
-using System.Text.Json;
+﻿using BepInEx.Logging;
 using ChatCommands.Abstractions;
 using ChatCommands.Attributes;
+using ChatCommands.Models;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 
 namespace ChatCommands.Services
 {
-    [AutoInject(typeof(IJsonConfigService))]
+    [AutoInject(typeof(IJsonConfigService), Lifetime = ServiceLifetime.Singleton)]
     public class JsonConfigService : IJsonConfigService
     {
         private ManualLogSource Logger { get; }

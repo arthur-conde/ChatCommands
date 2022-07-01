@@ -7,6 +7,6 @@ namespace ChatCommands.Abstractions
 {
     public interface ICommandHandler
     {
-        bool HandleCommands(VChatEvent ev, ManualLogSource log, ConfigFile config);
+        bool HandleCommands(VChatEvent ev, ConfigFile config);
     }
 }

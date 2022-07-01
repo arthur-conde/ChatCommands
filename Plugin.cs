@@ -10,7 +10,9 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using ChatCommands.Models;
 using SimpleInjector;
+using SimpleInjector.Lifestyles;
 using Wetstone.API;
 using Wetstone.Hooks;
 
@@ -37,51 +39,49 @@ namespace ChatCommands
             Prefix = Config.Bind("Config", "Prefix", "?", "The prefix used for chat commands.");
             DisabledCommands = Config.Bind("Config", "Disabled Commands", "", "Enter command names to disable them. Seperated by commas. Ex.: health,speed");
             WaypointLimit = Config.Bind("Config", "Waypoint Limit", 3, "Sets a waypoint limit per user.");
-
-            try
-            {
-                if (!Directory.Exists(ConfigPath))
-                    Directory.CreateDirectory(ConfigPath);
-
-                if (!File.Exists(KitsConfigPath))
-                {
-                    using var stream = File.Create(KitsConfigPath);
-                }
-
-                if (!File.Exists("BepInEx/config/ChatCommands/permissions.json"))
-                {
-                    using var stream = File.Create("BepInEx/config/ChatCommands/permissions.json");
-                }
-            }
-            catch (Exception e)
-            {
-                Log.LogWarning("Unable to create json");
-                Log.LogError(e);
-            }
         }
 
         public override void Load()
         {
+            // Create config
+            InitConfig();
+
             var serviceCollection = new Container();
+            serviceCollection.Options.DefaultScopedLifestyle = new AsyncScopedLifestyle();
 
             // Handle AutoInject Attribute
             foreach (var serviceGroup in Assembly.GetExecutingAssembly().GetTypes()
                          .Select(t => new { Type = t, Metadata = t.GetCustomAttribute<AutoInjectAttribute>(false) })
                          .Where(e => e.Metadata != null)
                          .GroupBy(e => e.Metadata.ServiceType)
-                         .Select(e => new { Type = e.Key, ConcreteImplementations = e.Select(e => e.Type).ToList()}))
+                         .Select(e => new { Type = e.Key, ConcreteImplementations = e.ToList()}))
             {
                 Log.LogInfo($"Service: {serviceGroup.Type.Name}");
                 if (serviceGroup.ConcreteImplementations.Count == 1)
                 {
-                    var concreteType = serviceGroup.ConcreteImplementations.First();
-                    Log.LogInfo($"\tImplementation: {concreteType.Name}");
-                    serviceCollection.Register(serviceGroup.Type, concreteType);
+                    var concreteImplementation = serviceGroup.ConcreteImplementations.First();
+                    Log.LogInfo($"\tImplementation: {concreteImplementation.Type} - Lifetime: {concreteImplementation.Metadata.Lifetime}");
+
+                    var lifetime = concreteImplementation.Metadata.Lifetime switch
+                    {
+                        ServiceLifetime.Singleton => Lifestyle.Singleton,
+                        ServiceLifetime.Transient => Lifestyle.Transient,
+                        _ => Lifestyle.Scoped,
+                    };
+                    serviceCollection.Register(serviceGroup.Type, concreteImplementation.Type, lifetime);
                 }
                 else
                 {
-                    foreach(var concreteType in serviceGroup.ConcreteImplementations)
-                        serviceCollection.Collection.Append(serviceGroup.Type, concreteType);
+                    foreach (var concreteImplementation in serviceGroup.ConcreteImplementations)
+                    {
+                        var lifetime = concreteImplementation.Metadata.Lifetime switch
+                        {
+                            ServiceLifetime.Singleton => Lifestyle.Singleton,
+                            ServiceLifetime.Transient => Lifestyle.Transient,
+                            _ => Lifestyle.Scoped,
+                        };
+                        serviceCollection.Collection.Append(serviceGroup.Type, concreteImplementation.Type, lifetime);
+                    }
                 }
             }
 
@@ -97,9 +97,10 @@ namespace ChatCommands
 
             var commandHandlerOptions = new CommandHandlerOptions
             {
-                Prefix= Prefix.Value, 
+                Prefix = Prefix.Value,
                 DisabledCommands = DisabledCommands.Value,
             };
+            Log.LogInfo("Registering Command Options...");
             serviceCollection.RegisterInstance<ICommandHandlerOptions>(commandHandlerOptions);
 
             cmd = new LegacyCommandHandler(Prefix.Value, DisabledCommands.Value);
@@ -111,7 +112,9 @@ namespace ChatCommands
 
             Log.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
 
-            // Create config directory and json
+            
+
+            // Create JSON
             var jsonConfigService = serviceCollection.GetInstance<IJsonConfigService>();
             jsonConfigService.Initialize();
 
@@ -130,10 +133,11 @@ namespace ChatCommands
             return true;
         }
 
-        private void HandleChatMessage(VChatEvent ev)
+        private async void HandleChatMessage(VChatEvent ev)
         {
+            await using var scope = AsyncScopedLifestyle.BeginScope(container);
             if (container.GetInstance<ICommandHandler>() is { } newCommandHandler &&
-                newCommandHandler.HandleCommands(ev, Log, Config))
+                newCommandHandler.HandleCommands(ev, Config))
                 return;
             Log.LogInfo("Unable to retrieve command handler. Falling back to legacy.");
             cmd.HandleCommands(ev, Log, Config);
